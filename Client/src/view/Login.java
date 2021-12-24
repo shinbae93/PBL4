@@ -1,5 +1,4 @@
-import java.awt.BorderLayout;
-import java.awt.EventQueue;
+package view;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -8,6 +7,12 @@ import javax.swing.JLabel;
 import javax.swing.JTextField;
 import javax.swing.JButton;
 import java.awt.event.ActionListener;
+import java.io.DataInputStream;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.awt.event.ActionEvent;
 import javax.swing.JPasswordField;
 
@@ -17,25 +22,6 @@ public class Login extends JFrame {
 	private JTextField txtID;
 	private JPasswordField txtPassword;
 
-	/**
-	 * Launch the application.
-	 */
-	public static void main(String[] args) {
-		EventQueue.invokeLater(new Runnable() {
-			public void run() {
-				try {
-					Login frame = new Login();
-					frame.setVisible(true);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
-	}
-
-	/**
-	 * Create the frame.
-	 */
 	public Login() {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 389, 216);
@@ -60,10 +46,34 @@ public class Login extends JFrame {
 		JButton btnLogin = new JButton("Login");
 		btnLogin.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				setVisible(false);
-				dispose();
-				Client frame = new Client();
-				frame.setVisible(true);
+				if (!"".equals(txtID.getText()) && !"".equals(new String(txtPassword.getPassword()))) {
+					try {
+						Socket soc = new Socket("localhost", 1234);
+						DataOutputStream dos = new DataOutputStream(soc.getOutputStream());
+						dos.writeInt(3);
+						dos.writeUTF(txtID.getText());
+						dos.writeUTF(new String(txtPassword.getPassword()));
+						DataInputStream dis = new DataInputStream(soc.getInputStream());
+						boolean valid = dis.readBoolean();
+						if (valid) {
+							setVisible(false);
+							dispose();
+							int iduser = dis.readInt();
+							Client frame = new Client(iduser);
+							frame.setVisible(true);
+						} else {
+							InvalidUser frame = new InvalidUser();
+							frame.setVisible(true);
+						}
+					} catch (UnknownHostException e1) {
+						e1.printStackTrace();
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+				} else {
+					EmptyUser frame = new EmptyUser();
+					frame.setVisible(true);
+				}
 			}
 		});
 		btnLogin.setBounds(124, 122, 89, 23);
