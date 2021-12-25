@@ -44,6 +44,7 @@ public class Server extends JFrame {
 	static String value = "";
 	private JPanel contentPane;
 	private static JTable table;
+	private JButton btnRefresh;
 
 	static ArrayList<Socket> listSK = new ArrayList<Socket>();
 	static ArrayList<FileInfo> myFiles = new ArrayList<FileInfo>();
@@ -112,6 +113,7 @@ public class Server extends JFrame {
 						}
 					}
 				}
+				btnRefresh.doClick();
 			}
 		});
 		btnDelFile.setBounds(475, 30, 89, 23);
@@ -122,7 +124,7 @@ public class Server extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				TreePath[] paths = tree.getSelectionPaths();
-				if(paths.length == 1) {
+				if (paths.length == 1) {
 					// select access user
 					value = "";
 					Object elements[] = paths[0].getPath();
@@ -145,6 +147,21 @@ public class Server extends JFrame {
 		btnAccess.setBounds(475, 123, 89, 23);
 		tabMyFile.add(btnAccess);
 
+		btnRefresh = new JButton("Refresh");
+		btnRefresh.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				// refresh tree 1: server
+				loadFile();
+				root.removeAllChildren();
+				File fileRoot = new File(System.getProperty("user.home") + "/OneDrive/Desktop/test_temp/test");
+				createChildren(fileRoot, root);
+				deleteDir(new File(System.getProperty("user.home") + "/OneDrive/Desktop/test_temp"));
+				treeModel.reload();
+			}
+		});
+		btnRefresh.setBounds(475, 213, 89, 23);
+		tabMyFile.add(btnRefresh);
+
 		// User management tab
 		JPanel tabUserManager = new JPanel();
 		tabUserManager.setLayout(null);
@@ -160,7 +177,7 @@ public class Server extends JFrame {
 		btnEdit.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				int[] index = table.getSelectedRows();
-				if(index.length == 1) {
+				if (index.length == 1) {
 					int id = Integer.parseInt(table.getModel().getValueAt(index[0], 0).toString());
 					EditUser frame = new EditUser(id);
 					frame.setVisible(true);
@@ -174,7 +191,7 @@ public class Server extends JFrame {
 		btnDelete.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				int[] index = table.getSelectedRows();
-				for(int i = 0; i < index.length; ++i) {
+				for (int i = 0; i < index.length; ++i) {
 					try {
 						userBO.deleteUser(Integer.parseInt(table.getModel().getValueAt(index[i], 0).toString()));
 					} catch (ClassNotFoundException e1) {
@@ -199,6 +216,14 @@ public class Server extends JFrame {
 		btnAdd.setBounds(62, 174, 89, 23);
 		tabUserManager.add(btnAdd);
 
+		JButton btnRefreshUser = new JButton("Refresh");
+		btnRefreshUser.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				reloadUser();
+			}
+		});
+		btnRefreshUser.setBounds(546, 174, 89, 23);
+		tabUserManager.add(btnRefreshUser);
 	}
 
 	private void loadFile() {
@@ -242,12 +267,12 @@ public class Server extends JFrame {
 		}
 		String value[][] = data.stream().map(u -> u.toArray(new String[0])).toArray(String[][]::new);
 		table = new JTable(value, header);
-		AbstractTableModel tableModel = (AbstractTableModel)table.getModel();
+		AbstractTableModel tableModel = (AbstractTableModel) table.getModel();
 		TableColumnModel tcm = table.getColumnModel();
 		tcm.removeColumn(tcm.getColumn(0));
 		tableModel.fireTableDataChanged();
 	}
-	
+
 	protected static void reloadUser() {
 		UserBO userBO = new UserBO();
 		ArrayList<User> listUser = new ArrayList<User>();
@@ -387,8 +412,6 @@ public class Server extends JFrame {
 				case 2: {
 					try {
 						int n = dis.readInt();
-						boolean sendAll = dis.readBoolean();
-						System.out.println(sendAll);
 						for (int i = 0; i < n; ++i) {
 							String name = dis.readUTF();
 							System.out.println(name);
@@ -414,19 +437,6 @@ public class Server extends JFrame {
 							} else {
 								// add new file
 								fileBO.addFile(name, path, created, modified, data);
-							}
-							if (sendAll) {
-								// Send to list client connected
-								for (int j = 0; j < listSK.size(); ++j) {
-									if (listSK.get(j).isConnected()) {
-										dos = new DataOutputStream(soc.getOutputStream());
-										dos.writeInt(1);
-										dos.writeUTF(name);
-										dos.writeUTF(path);
-										dos.writeInt(size);
-										dos.write(data);
-									}
-								}
 							}
 						}
 					} catch (ClassNotFoundException e) {

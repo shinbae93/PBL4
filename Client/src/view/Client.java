@@ -119,10 +119,6 @@ public class Client extends JFrame {
 		// delete temporary folder
 		deleteDir(new File(System.getProperty("user.home") + "/OneDrive/Desktop/test_temp"));
 
-		JCheckBox checkAll = new JCheckBox("Sync All");
-		checkAll.setBounds(385, 134, 93, 21);
-		tabMyFile.add(checkAll);
-
 		JButton btnSync = new JButton("Sync");
 		btnSync.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -177,12 +173,31 @@ public class Client extends JFrame {
 							dos.writeUTF(selection1.get(i));
 							dos.flush();
 						}
+						DataInputStream dis = new DataInputStream(soc.getInputStream());
+						int cmd = dis.readInt();
+						int n = dis.readInt();
+						for (int i = 0; i < n; ++i) {
+							String name = dis.readUTF();
+							System.out.println(name);
+							String path = dis.readUTF();
+							System.out.println(path);
+							int size = dis.readInt();
+							byte[] data = dis.readNBytes(size);
+							File file = new File(System.getProperty("user.home") + "/OneDrive/Desktop/" + path);
+							// if file exist, delete old file
+							if (file.exists()) {
+								file.delete();
+							}
+							file.getParentFile().mkdirs();
+							// create new file
+							file.createNewFile();
+							Files.write(file.toPath(), data, StandardOpenOption.SYNC);
+						}
 					}
 					if (n2 > 0) {
 						DataOutputStream dos = new DataOutputStream(soc.getOutputStream());
 						dos.writeInt(2);
 						dos.writeInt(n2);
-						dos.writeBoolean(checkAll.isSelected());
 						for (int i = 0, n = selection2.size(); i < n; ++i) {
 							File file = new File(
 									System.getProperty("user.home") + "/OneDrive/Desktop/" + selection2.get(i));
@@ -197,7 +212,6 @@ public class Client extends JFrame {
 							dos.flush();
 						}
 					}
-					soc.close();
 
 					// clear selection
 					tree1.clearSelection();
@@ -205,6 +219,8 @@ public class Client extends JFrame {
 
 					// refresh view
 					btnRefresh.doClick();
+					
+					new ReceiveClient(soc).start();
 				} catch (UnknownHostException e1) {
 					e1.printStackTrace();
 				} catch (IOException e1) {
@@ -367,15 +383,15 @@ public class Client extends JFrame {
 		btnCancel.setBounds(253, 182, 89, 23);
 		tabUserInfo.add(btnCancel);
 
-		Socket soc;
-		try {
-			soc = new Socket("localhost", 1234);
-			new ReceiveClient(soc).start();
-		} catch (UnknownHostException e1) {
-			e1.printStackTrace();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
+//		Socket soc;
+//		try {
+//			soc = new Socket("localhost", 1234);
+//			new ReceiveClient(soc).start();
+//		} catch (UnknownHostException e1) {
+//			e1.printStackTrace();
+//		} catch (IOException e1) {
+//			e1.printStackTrace();
+//		}
 	}
 
 	private void createChildren(File fileRoot, DefaultMutableTreeNode node) {
@@ -475,7 +491,7 @@ public class Client extends JFrame {
 
 	// make default share folder if not exist and load folder from server
 	private void init() {
-		File share = new File(System.getProperty("user.home") + "/OneDrive/Desktop/test/Share");
+		File share = new File(System.getProperty("user.home") + "/OneDrive/Desktop/test");
 		if (!share.exists()) {
 			System.out.println(share.mkdir());
 		}
